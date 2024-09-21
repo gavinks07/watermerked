@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Watermark</title>
+  <style>
+    #canvas {
+      border: 2px solid black;
+      max-width: 100%;
+    }
+    #container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <h2>Upload Image and Add Watermark</h2>
+    <input type="file" id="imageUpload" accept="image/*">
+    <input type="text" id="watermarkText" placeholder="Enter watermark text">
+    <button onclick="addWatermark()">Add Watermark</button>
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <script>
+    let canvas = document.getElementById('canvas');
+    let ctx = canvas.getContext('2d');
+    let img = new Image();
+
+    document.getElementById('imageUpload').addEventListener('change', function(e) {
+      let reader = new FileReader();
+      reader.onload = function(event) {
+        img.onload = function() {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+        }
+        img.src = event.target.result;
+      }
+      reader.readAsDataURL(e.target.files[0]);
+    });
+
+    function addWatermark() {
+      let text = document.getElementById('watermarkText').value;
+      ctx.drawImage(img, 0, 0); // Redraw the image to reset
+      
+      // Set font size to 1/8 of the image width
+      let fontSize = canvas.width / 8;
+      ctx.font = `${fontSize}px Arial`;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // Calculate position for centered text
+      let x = canvas.width / 2;
+      let y = canvas.height / 2;
+
+      // Split text into lines if too long
+      let maxWidth = canvas.width * 0.9; // Maximum width of the text (90% of canvas width)
+      let lines = getWrappedText(ctx, text, maxWidth);
+
+      // Draw each line, adjusting y position
+      lines.forEach((line, index) => {
+        ctx.fillText(line, x, y + (index * fontSize));
+      });
+    }
+
+    function getWrappedText(ctx, text, maxWidth) {
+      let words = text.split(' ');
+      let lines = [];
+      let currentLine = words[0];
+
+      for (let i = 1; i < words.length; i++) {
+        let word = words[i];
+        let width = ctx.measureText(currentLine + ' ' + word).width;
+        if (width < maxWidth) {
+          currentLine += ' ' + word;
+        } else {
+          lines.push(currentLine);
+          currentLine = word;
+        }
+      }
+      lines.push(currentLine);
+      return lines;
+    }
+  </script>
+</body>
+</html>
