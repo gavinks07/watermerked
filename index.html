@@ -50,7 +50,7 @@
     <label>Rotation: <input type="range" id="rotationSlider" min="-45" max="45" value="0" oninput="updateAllWatermarks()"></label>
     
     <label>Position:
-      <select id="positionSelect" onchange="updateAllWatermarks()">
+      <select id="positionSelect" onchange="updateAllWatermarks(); toggleDistanceSlider();">
         <option value="center">Center</option>
         <option value="top-left">Top Left</option>
         <option value="top-right">Top Right</option>
@@ -59,9 +59,13 @@
       </select>
     </label>
 
-    <div class="canvas-container" id="canvasContainer"></div>
+    <label id="distanceLabel" style="display: none;">Distance from Edge:
+      <input type="range" id="distanceSlider" min="5" max="100" value="20" oninput="updateAllWatermarks()">
+    </label>
 
     <button id="saveAllBtn" style="display: none;" onclick="saveAllImages()">Save All</button>
+
+    <div class="canvas-container" id="canvasContainer"></div>
   </div>
 
   <script>
@@ -87,7 +91,7 @@
           let canvas = document.createElement('canvas');
           let ctx = canvas.getContext('2d');
           
-          let maxWidth = 300; // Resize to fit screen
+          let maxWidth = 300;
           let scale = maxWidth / img.width;
           canvas.width = img.width * scale;
           canvas.height = img.height * scale;
@@ -119,38 +123,41 @@
       let opacity = document.getElementById('opacitySlider').value / 100;
       let rotation = document.getElementById('rotationSlider').value * (Math.PI / 180);
       let position = document.getElementById('positionSelect').value;
+      let distance = parseInt(document.getElementById('distanceSlider').value);
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
       ctx.font = `${fontSize}px Arial`;
       ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
-      ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
+      let textMetrics = ctx.measureText(text);
+      let textWidth = textMetrics.width;
+      let textHeight = fontSize; 
+
       let x, y;
-      let padding = fontSize / 2;
 
       switch (position) {
         case "top-left":
-          x = padding;
-          y = padding + fontSize;
-          ctx.textAlign = "left";
+          x = distance + textWidth / 2;
+          y = distance + textHeight / 2;
+          ctx.textAlign = "center";
           break;
         case "top-right":
-          x = canvas.width - padding;
-          y = padding + fontSize;
-          ctx.textAlign = "right";
+          x = canvas.width - distance - textWidth / 2;
+          y = distance + textHeight / 2;
+          ctx.textAlign = "center";
           break;
         case "bottom-left":
-          x = padding;
-          y = canvas.height - padding;
-          ctx.textAlign = "left";
+          x = distance + textWidth / 2;
+          y = canvas.height - distance - textHeight / 2;
+          ctx.textAlign = "center";
           break;
         case "bottom-right":
-          x = canvas.width - padding;
-          y = canvas.height - padding;
-          ctx.textAlign = "right";
+          x = canvas.width - distance - textWidth / 2;
+          y = canvas.height - distance - textHeight / 2;
+          ctx.textAlign = "center";
           break;
         default:
           x = canvas.width / 2;
@@ -169,6 +176,12 @@
       images.forEach(({ canvas, ctx, img }) => {
         updateWatermark(canvas, ctx, img);
       });
+    }
+
+    function toggleDistanceSlider() {
+      let position = document.getElementById('positionSelect').value;
+      let distanceLabel = document.getElementById('distanceLabel');
+      distanceLabel.style.display = position === "center" ? "none" : "block";
     }
 
     function saveImage(canvas, fileName) {
