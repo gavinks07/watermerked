@@ -3,136 +3,149 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Image Watermark</title>
+  <title>Batch Image Watermark</title>
   <style>
-    #canvas {
-      border: 2px solid black;
-      max-width: 100%;
-    }
     #container {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 15px;
+      gap: 10px;
     }
-    button {
-      margin: 5px;
+    .canvas-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+    }
+    canvas {
+      border: 2px solid black;
+      max-width: 100%;
     }
     label {
-      display: flex;
-      align-items: center;
-      gap: 5px;
+      display: block;
+      margin-top: 5px;
     }
   </style>
 </head>
 <body>
   <div id="container">
-    <h2>Upload Image and Add Watermark</h2>
-    <input type="file" id="imageUpload" accept="image/*">
-    <input type="text" id="watermarkText" placeholder="Enter watermark text">
-    <label>
-      <input type="checkbox" id="subtleMode"> Subtle Watermark (Bottom Right)
+    <h2>Upload Images and Add Watermark</h2>
+    <input type="file" id="imageUpload" accept="image/*" multiple>
+    <input type="text" id="watermarkText" placeholder="Enter watermark text" oninput="updateAllWatermarks()">
+    
+    <label>Size: <input type="range" id="sizeSlider" min="5" max="100" value="20" oninput="updateAllWatermarks()"></label>
+    <label>Opacity: <input type="range" id="opacitySlider" min="0" max="100" value="50" oninput="updateAllWatermarks()"></label>
+    <label>Rotation: <input type="range" id="rotationSlider" min="-45" max="45" value="0" oninput="updateAllWatermarks()"></label>
+    
+    <label>Position:
+      <select id="positionSelect" onchange="updateAllWatermarks()">
+        <option value="center">Center</option>
+        <option value="top-left">Top Left</option>
+        <option value="top-right">Top Right</option>
+        <option value="bottom-left">Bottom Left</option>
+        <option value="bottom-right">Bottom Right</option>
+      </select>
     </label>
-    <button onclick="addWatermark()">Add Watermark</button>
-    <canvas id="canvas"></canvas>
-    <button onclick="saveImage()">Save Image</button>
+
+    <div class="canvas-container" id="canvasContainer"></div>
+
+    <button id="saveAllBtn" style="display: none;" onclick="saveAllImages()">Save All</button>
   </div>
 
   <script>
-    let canvas = document.getElementById('canvas');
-    let ctx = canvas.getContext('2d');
-    let img = new Image();
-    let originalFileName = '';
+    let images = [];
+    let originalFileNames = [];
 
-    document.getElementById('imageUpload').addEventListener('change', function(e) {
-      let file = e.target.files[0];
-      originalFileName = file.name.split('.')[0]; // Get file name without extension
-      let reader = new FileReader();
-      reader.onload = function(event) {
+    document.getElementById('imageUpload').addEventListener('change', function(event) {
+      images = [];
+      originalFileNames = [];
+      document.getElementById('canvasContainer').innerHTML = "";
+
+      Array.from(event.target.files).forEach(file => {
+        let reader = new FileReader();
+        let img = new Image();
+        originalFileNames.push(file.name.split('.')[0]);
+
+        reader.onload = function(e) {
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+
         img.onload = function() {
+          let canvas = document.createElement('canvas');
+          let ctx = canvas.getContext('2d');
           canvas.width = img.width;
           canvas.height = img.height;
           ctx.drawImage(img, 0, 0);
-        }
-        img.src = event.target.result;
-      }
-      reader.readAsDataURL(file);
+
+          images.push({ img, canvas, ctx });
+          document.getElementById('canvasContainer').appendChild(canvas);
+
+          updateWatermark(canvas, ctx, img);
+        };
+      });
+
+      document.getElementById('saveAllBtn').style.display = images.length > 1 ? "block" : "none";
     });
 
-    function addWatermark() {
+    function updateWatermark(canvas, ctx, img) {
       let text = document.getElementById('watermarkText').value;
-      let subtleMode = document.getElementById('subtleMode').checked;
-      ctx.drawImage(img, 0, 0); // Reset image
+      let fontSize = (canvas.width * document.getElementById('sizeSlider').value) / 100;
+      let opacity = document.getElementById('opacitySlider').value / 100;
+      let rotation = document.getElementById('rotationSlider').value * (Math.PI / 180);
+      let position = document.getElementById('positionSelect').value;
 
-      if (subtleMode) {
-        addSubtleWatermark(text);
-      } else {
-        addCenteredWatermark(text);
-      }
-    }
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
 
-    function addCenteredWatermark(text) {
-      let fontSize = canvas.width / 8;
       ctx.font = `${fontSize}px Arial`;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      let x = canvas.width / 2;
-      let y = canvas.height / 2;
-      let maxWidth = canvas.width * 0.9;
-
-      let lines = getWrappedText(ctx, text, maxWidth);
-      lines.forEach((line, index) => {
-        ctx.fillText(line, x, y + (index * fontSize));
-      });
-    }
-
-    function addSubtleWatermark(text) {
-      let fontSize = canvas.width / 20;
-      ctx.font = `${fontSize}px Arial`;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)'; // More transparent for subtlety
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'bottom';
-
-      let x = canvas.width - (fontSize * 0.5);
-      let y = canvas.height - (fontSize * 0.5);
+      let x, y;
+      switch (position) {
+        case "top-left":
+          x = fontSize;
+          y = fontSize;
+          break;
+        case "top-right":
+          x = canvas.width - fontSize;
+          y = fontSize;
+          break;
+        case "bottom-left":
+          x = fontSize;
+          y = canvas.height - fontSize;
+          break;
+        case "bottom-right":
+          x = canvas.width - fontSize;
+          y = canvas.height - fontSize;
+          break;
+        default:
+          x = canvas.width / 2;
+          y = canvas.height / 2;
+      }
 
       ctx.save();
       ctx.translate(x, y);
-      ctx.rotate(-0.2); // Slight rotation
+      ctx.rotate(rotation);
       ctx.fillText(text, 0, 0);
       ctx.restore();
     }
 
-    function getWrappedText(ctx, text, maxWidth) {
-      let words = text.split(' ');
-      let lines = [];
-      let currentLine = words[0];
-
-      for (let i = 1; i < words.length; i++) {
-        let word = words[i];
-        let width = ctx.measureText(currentLine + ' ' + word).width;
-        if (width < maxWidth) {
-          currentLine += ' ' + word;
-        } else {
-          lines.push(currentLine);
-          currentLine = word;
-        }
-      }
-      lines.push(currentLine);
-      return lines;
+    function updateAllWatermarks() {
+      images.forEach(({ canvas, ctx, img }) => {
+        updateWatermark(canvas, ctx, img);
+      });
     }
 
-    function saveImage() {
-      let imageUrl = canvas.toDataURL();
-      let link = document.createElement('a');
-      link.href = imageUrl;
-      link.download = `${originalFileName}-Watermarked.png`;
-      
-      // Opens image in a new tab (for iPhone users to long-press & save)
-      link.target = '_blank';
-      link.click();
+    function saveAllImages() {
+      images.forEach(({ canvas }, index) => {
+        let link = document.createElement('a');
+        link.href = canvas.toDataURL();
+        link.download = `${originalFileNames[index]}-Watermarked.png`;
+        link.click();
+      });
     }
   </script>
 </body>
