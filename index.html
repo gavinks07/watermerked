@@ -18,6 +18,11 @@
     button {
       margin: 5px;
     }
+    label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
   </style>
 </head>
 <body>
@@ -25,6 +30,9 @@
     <h2>Upload Image and Add Watermark</h2>
     <input type="file" id="imageUpload" accept="image/*">
     <input type="text" id="watermarkText" placeholder="Enter watermark text">
+    <label>
+      <input type="checkbox" id="subtleMode"> Subtle Watermark (Bottom Right)
+    </label>
     <button onclick="addWatermark()">Add Watermark</button>
     <canvas id="canvas"></canvas>
     <button onclick="saveImage()">Save Image</button>
@@ -38,7 +46,7 @@
 
     document.getElementById('imageUpload').addEventListener('change', function(e) {
       let file = e.target.files[0];
-      originalFileName = file.name.split('.')[0]; // Get the original file name without extension
+      originalFileName = file.name.split('.')[0]; // Get file name without extension
       let reader = new FileReader();
       reader.onload = function(event) {
         img.onload = function() {
@@ -53,27 +61,48 @@
 
     function addWatermark() {
       let text = document.getElementById('watermarkText').value;
-      ctx.drawImage(img, 0, 0); // Redraw the image to reset
+      let subtleMode = document.getElementById('subtleMode').checked;
+      ctx.drawImage(img, 0, 0); // Reset image
 
-      // Set font size to 1/8 of the image width
+      if (subtleMode) {
+        addSubtleWatermark(text);
+      } else {
+        addCenteredWatermark(text);
+      }
+    }
+
+    function addCenteredWatermark(text) {
       let fontSize = canvas.width / 8;
       ctx.font = `${fontSize}px Arial`;
       ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
-      // Calculate position for centered text
       let x = canvas.width / 2;
       let y = canvas.height / 2;
+      let maxWidth = canvas.width * 0.9;
 
-      // Split text into lines if too long
-      let maxWidth = canvas.width * 0.9; // Maximum width of the text (90% of canvas width)
       let lines = getWrappedText(ctx, text, maxWidth);
-
-      // Draw each line, adjusting y position
       lines.forEach((line, index) => {
         ctx.fillText(line, x, y + (index * fontSize));
       });
+    }
+
+    function addSubtleWatermark(text) {
+      let fontSize = canvas.width / 20;
+      ctx.font = `${fontSize}px Arial`;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)'; // More transparent for subtlety
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+
+      let x = canvas.width - (fontSize * 0.5);
+      let y = canvas.height - (fontSize * 0.5);
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(-0.2); // Slight rotation
+      ctx.fillText(text, 0, 0);
+      ctx.restore();
     }
 
     function getWrappedText(ctx, text, maxWidth) {
@@ -101,7 +130,7 @@
       link.href = imageUrl;
       link.download = `${originalFileName}-Watermarked.png`;
       
-      // This opens the image in a new tab for iPhone users to long-press and save
+      // Opens image in a new tab (for iPhone users to long-press & save)
       link.target = '_blank';
       link.click();
     }
