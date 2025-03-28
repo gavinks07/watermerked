@@ -129,26 +129,33 @@
       ctx.textBaseline = 'middle';
 
       let x, y;
+      let padding = fontSize / 2;
+
       switch (position) {
         case "top-left":
-          x = fontSize;
-          y = fontSize;
+          x = padding;
+          y = padding + fontSize;
+          ctx.textAlign = "left";
           break;
         case "top-right":
-          x = canvas.width - fontSize;
-          y = fontSize;
+          x = canvas.width - padding;
+          y = padding + fontSize;
+          ctx.textAlign = "right";
           break;
         case "bottom-left":
-          x = fontSize;
-          y = canvas.height - fontSize;
+          x = padding;
+          y = canvas.height - padding;
+          ctx.textAlign = "left";
           break;
         case "bottom-right":
-          x = canvas.width - fontSize;
-          y = canvas.height - fontSize;
+          x = canvas.width - padding;
+          y = canvas.height - padding;
+          ctx.textAlign = "right";
           break;
         default:
           x = canvas.width / 2;
           y = canvas.height / 2;
+          ctx.textAlign = "center";
       }
 
       ctx.save();
